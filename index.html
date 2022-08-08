@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
+	</head>
+	<style>
+		#baiduMap {
+			height: 100vw;
+			width: 100vh;
+		}
+	</style>
+	<body>
+		<div id="baiduMap"></div>
+	</body>
+	<!--  坐标拾取 https://api.map.baidu.com/lbsapi/getpoint/index.html  -->
+	<script type="text/javascript" src="https://api.map.baidu.com/api?v=3.0&ak="></script>
+	<script type="text/javascript">
+		var map = new BMap.Map("baiduMap");
+		var point = new BMap.Point(116.404, 39.915);
+		map.centerAndZoom(point, 15);
+		map.enableScrollWheelZoom(); // 开启鼠标滚轮缩放
+		map.addControl(new BMap.ScaleControl()); // 添加比例尺控件
+
+		var pointStr = "108.5449,31.6846,108.2813,31.9043,108.3691,32.168,108.5449,32.2119,109.0723,31.9482,109.248,31.7285,109.5996,31.7285,109.7754,31.6846,109.6875,31.5527,110.127,31.377,110.2148,31.1572,110.0391,30.8057,109.8633,30.8936,109.4238,30.542,109.248,30.6299,109.1602,30.542,109.0723,30.6299,108.8086,30.498,108.6328,30.5859,108.457,30.4102,108.5449,30.2344,108.457,29.7949,108.6328,29.8389,108.9844,29.3115,109.0723,29.3555,109.248,29.1357,109.248,28.4766,109.0723,28.2129,108.7207,28.2129,108.7207,28.4766,108.6655,28.3104,108.5781,28.3145,108.5449,28.3887,108.5449,28.6523,108.3691,28.6523,108.2813,29.0918,107.8418,29.0039,107.8418,29.1357,107.5781,29.2236,107.4023,29.1797,107.4023,28.8721,106.875,28.7842,106.6992,28.4766,106.6113,28.5205,106.6113,28.6523,106.5234,28.7842,106.4355,28.7842,106.5234,28.5645,106.3477,28.5205,106.2598,28.8721,105.8203,28.96,105.7324,29.2676,105.4688,29.3115,105.293,29.5313,105.7324,29.8828,105.5566,30.1025,105.6445,30.2783,105.8203,30.4541,106.2598,30.1904,106.6113,30.3223,106.7871,30.0146,107.0508,30.0146,107.4902,30.6299,107.4023,30.7617,107.4902,30.8496,107.9297,30.8496,108.1934,31.5088,108.5449,31.6846"
+			.split(",");
+
+		var pointArr = [];
+
+		for (var k = 0; k < pointStr.length; k += 2) {
+			pointArr.push({
+				lng: pointStr[k],
+				lat: pointStr[k + 1]
+			});
+		}
+		// 生成坐标点
+		var trackPoint = [];
+		for (var i = 0, j = pointArr.length; i < j; i++) {
+			trackPoint.push(new BMap.Point(pointArr[i].lng, pointArr[i].lat));
+		}
+		map.centerAndZoom(trackPoint[0], 15);
+
+		// 画线
+		var polyline = new BMap.Polyline(trackPoint, {
+			strokeColor: "#ad0e21",
+			strokeWeight: 3,
+			setStrokeStyle: "dashed",
+			strokeOpacity: 1
+		});
+		map.addOverlay(polyline);
+		// 配置图片
+		var size = new BMap.Size(22, 22);
+		var offset = new BMap.Size(0, 0);
+		var imageSize = new BMap.Size(20, 20);
+		var icon = new BMap.Icon("point.png", size, {
+			imageSize: imageSize,
+			infoWindowAnchor: new BMap.Size(0, -3)
+		});
+
+		// 画图标
+		for (var i = 0, j = trackPoint.length; i < j; i++) {
+			var marker = new BMap.Marker(trackPoint[i], {
+				icon: icon,
+				offset: offset
+			}); // 创建标注
+			map.addOverlay(marker);
+			marker.addEventListener("click", function() {
+				// alert(this.getPosition())
+				var point = this.getPosition();
+				// alert("经度：" + point.lng + "\n" + "纬度：" + point.lat)
+				console.info("经度：" + point.lng + "\n" + "纬度：" + point.lat);
+			})
+
+		}
+		//根据经纬极值计算绽放级别。 (从网上复制)
+		function getZoom(maxLng, minLng, maxLat, minLat) {
+			var zoom = ["50", "100", "200", "500", "1000", "2000", "5000", "10000", "20000", "25000", "50000", "100000",
+				"200000", "500000", "1000000", "2000000"
+			]; // 级别18到3。
+			var pointA = new BMap.Point(maxLng, maxLat); // 创建点坐标A
+			var pointB = new BMap.Point(minLng, minLat); // 创建点坐标B
+			var distance = map.getDistance(pointA, pointB).toFixed(1); //获取两点距离,保留小数点后两位
+			for (var i = 0, zoomLen = zoom.length; i < zoomLen; i++) {
+				if (zoom[i] - distance > 0) {
+					return 18 - i + 3; //之所以会多3，是因为地图范围常常是比例尺距离的10倍以上。所以级别会增加3。
+				}
+			}
+		}
+
+		//  (从网上复制)
+		function setZoom(points) {
+			if (points.length > 0) {
+				var maxLng = points[0].lng;
+				var minLng = points[0].lng;
+				var maxLat = points[0].lat;
+				var minLat = points[0].lat;
+				var res;
+				for (var i = points.length - 1; i >= 0; i--) {
+					res = points[i];
+					if (res.lng > maxLng) maxLng = res.lng;
+					if (res.lng < minLng) minLng = res.lng;
+					if (res.lat > maxLat) maxLat = res.lat;
+					if (res.lat < minLat) minLat = res.lat;
+				}
+				var cenLng = (parseFloat(maxLng) + parseFloat(minLng)) / 2;
+				var cenLat = (parseFloat(maxLat) + parseFloat(minLat)) / 2;
+				var zoom = getZoom(maxLng, minLng, maxLat, minLat);
+				map.centerAndZoom(new BMap.Point(cenLng, cenLat), zoom);
+			} else {
+				//没有坐标，显示全中国
+				map.centerAndZoom(new BMap.Point(103.388611, 35.563611), 5);
+			}
+		}
+		setZoom(pointArr)
+	</script>
+
+</html>
